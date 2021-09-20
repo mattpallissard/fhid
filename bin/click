@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+click=0
+left=1
+right=3
+output=$XDG_RUNTIME_DIR/fhid
+
+main() {
+	while (($#)); do
+		case "$1" in
+			--left)
+				((click+=left))
+				shift
+				;;
+		  --right)
+				((click+=right))
+				shift
+				;;
+			--release)
+				((click+=1))
+				shift
+				;;
+		esac
+	done
+
+	printf "%d\n" "$click"
+	printf "%d\n" "$click" > "$output"
+}
+main "$@"
+
+

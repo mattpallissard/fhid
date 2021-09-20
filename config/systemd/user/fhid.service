@@ -1,0 +1,13 @@
+[Unit]
+Description=what a hack
+
+[Service]
+ExecStart=/home/matt/bin/fhid
+Type=simple
+CPUWeight=35
+MemoryHigh=56M
+MemoryMax=56M
+MemorySwapMax=1
+
+[Install]
+WantedBy=default.target
