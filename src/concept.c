@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -251,6 +252,7 @@ int main(int argc, char **argv)
 {
 	int dfd, ifd;
 	int ret = EXIT_SUCCESS;
+	struct timespec ts = { 0, 500000 };
 	const char *path = DEVICE_PATH;
 	char fs[1024] = "";
 	sprintf(fs, "%s/%s", getenv(INPUT_PREFIX_ENVVAR), INPUT_SUFFIX);
@@ -295,6 +297,8 @@ int main(int argc, char **argv)
 			if (ret)
 				break;
 		}
+
+		nanosleep(&ts, NULL);
 	}
 
 cleanup:
