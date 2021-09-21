@@ -131,17 +131,18 @@ static int uhid_write(int fd, const struct uhid_event *ev)
 {
 	ssize_t ret;
 
-	ret = write(fd, ev, sizeof(*ev));
-	if (ret < 0) {
-		fprintf(stderr, "Cannot write to uhid: %m\n");
-		return -errno;
-	} else if (ret != sizeof(*ev)) {
-		fprintf(stderr, "Wrong size written to uhid: %zd != %zu\n", ret,
-			sizeof(ev)); // NOLINT(bugprone-sizeof-expression)
-		return -EFAULT;
-	} else {
-		return 0;
-	}
+	if ((ret = write(fd, ev, sizeof(*ev))) < 0)
+		ret = -errno;
+	else if (ret != sizeof(*ev))
+		ret = -EFAULT;
+	else
+		ret = 0;
+
+out:
+	if (errno)
+		fprintf(stderr, "%s: %s\n", __func__, strerror(errno));
+	errno = 0;
+	return ret;
 }
 
 static int create(int fd)
@@ -196,56 +197,30 @@ static int keyboard(FILE *f, int fd)
 	char buf[128];
 	char *b = buf;
 	size_t bsize = sizeof(buf);
-	ssize_t ret, i;
-	int j = 0;
+	int ret, i, j, k;
+
+	int toggle[] = { RELEASE, PRESS};
+	int *button[] = { &btn1_down, &btn2_down };
 
 	if ((ret = getline(&b, &bsize, f)) == -1)
 		return 1;
 
-	if((j = buf[0] - '0') > 4 || j < 1)
+	if ((i = buf[0] - '0') > 4 || i < 1)
 		return 1;
+
+	j = i % 2;
+	k = (i - 2) > 0;
 
 	fprintf(stdout,
 		"recieved: %s_%s\n",
-		j % 2 ? "press" : "release",
-		j - 2 > 0 ? "right" : "left");
+		j ? "press" : "release",
+		k ? "right" : "left");
 
-	switch (j) {
-	case 1:
-		btn1_down = PRESS;
-		ret = send_event(fd);
-		if (ret) {
-			btn1_down = RELEASE;
-			return ret;
-		}
-		break;
+	*(button[k]) = toggle[j];
+	if ((ret = send_event(fd)))
+		*(button[k]) = toggle[!j];
 
-	case 2:
-		btn1_down = RELEASE;
-		ret = send_event(fd);
-		if (ret) {
-			btn1_down = PRESS;
-			return ret;
-		}
-		break;
-	case 3:
-		btn2_down = PRESS;
-		ret = send_event(fd);
-		if (ret) {
-			btn2_down = RELEASE;
-			return ret;
-		}
-		break;
-	case 4:
-		btn2_down = RELEASE;
-		ret = send_event(fd);
-		if (ret) {
-			btn2_down = RELEASE;
-			return ret;
-		}
-		break;
-	}
-	return 0;
+	return ret;
 }
 
 int main(int argc, char **argv)
@@ -292,11 +267,9 @@ int main(int argc, char **argv)
 		if (pfds[1].revents & POLLHUP)
 			break;
 
-		if (pfds[0].revents & POLLIN) {
-			ret = keyboard(rx, dfd);
-			if (ret)
+		if (pfds[0].revents & POLLIN)
+			if ((ret = keyboard(rx, dfd)))
 				break;
-		}
 
 		nanosleep(&ts, NULL);
 	}
@@ -306,6 +279,6 @@ cleanup:
 	destroy(ifd);
 out:
 	if (errno)
-		fprintf(stderr, "error: %s\n", strerror(errno));
+		fprintf(stderr, "%s: %s\n", __func__, strerror(errno));
 	return ret;
 }
