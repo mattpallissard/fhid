@@ -2,7 +2,7 @@
 Description=what a hack
 
 [Service]
-ExecStart=/home/matt/bin/fhid
+ExecStart=/bin/bash -c "~/bin/fhid"
 Type=simple
 CPUWeight=35
 MemoryHigh=56M
